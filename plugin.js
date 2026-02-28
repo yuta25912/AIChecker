@@ -15,7 +15,7 @@ class Plugin {
         this.loadHistoryFromStorage();
         this.createAiButton();
         this.createAiModal();
-        console.log("AIChecker (Polished dev11) loaded!");
+        console.log("AIChecker (Stable dev15) loaded!");
     }
 
     async onunload() {
@@ -54,21 +54,15 @@ class Plugin {
         aiBtn.addEventListener('click', () => this.toggleAiModal(true));
     }
 
-    // 簡易的な Markdown 変換 (太字と改行)
     parseMarkdown(text) {
         if (!text) return "";
         let html = text
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
-        
-        // 太字 **...** -> <strong>...</strong>
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        // 太字 *...* -> <em>...</em> (一応)
         html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        // 改行 \n -> <br>
         html = html.replace(/\n/g, '<br>');
-        
         return html;
     }
 
@@ -83,8 +77,8 @@ class Plugin {
                         <div class="flex items-center gap-3">
                             <div class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                             <div>
-                                <h2 class="text-lg font-bold text-slate-800 dark:text-white">AIChecker (Easy)</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 | Learning Mode | dev11</p>
+                                <h2 class="text-lg font-bold text-slate-800 dark:text-white">AIChecker</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 | Stability Mode | dev15</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -126,7 +120,7 @@ class Plugin {
         const chatBody = document.getElementById('aiChatBody');
         chatBody.innerHTML = '';
         if (this.chatHistory.length === 0) {
-            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n\n**できること：**\n- ブロックの組み合わせ方の相談\n- コードのバグチェック\n- 用語の解説（「オブジェクト」って何？など）\n\n分からないことがあったら何でも聞いてね！');
+            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n\n分からないことがあったら何でも聞いてね！');
         } else {
             this.chatHistory.forEach(msg => this.addMessageToUI(msg.role, msg.content));
         }
@@ -149,7 +143,6 @@ class Plugin {
         return "論理, ループ, 算術, テキスト, リスト, 変数, 関数, Discord(Bot, Message, Interaction)";
     }
 
-    // デバッグ用: 話題の推測ログ
     logDetectedTopic(text) {
         const topics = {
             "バグ": ["動かない", "エラー", "バグ", "変", "おかしい", "ミス", "固まる"],
@@ -186,17 +179,20 @@ class Plugin {
             }
 
             const blocks = this.getAvailableBlocks();
-            const systemPrompt = `あなたは EDBB の親切な AI アシスタントです。
-解決策を示すときは、「『${blocks}』カテゴリの中にある『△△』ブロックを使いましょう」のように具体的に案内してください。
-専門用語を回答に含めても良いですが、ユーザーから意味を聞かれたら中学生でも分かるように優しく解説してください。
-Discord Botの作成、エディタの使い方、プログラムの設計に関すること「のみ」答えてください。
-丁寧ですが堅苦しくない口調で回答してください。
+            const systemPrompt = `あなたはEDBB(Discord Bot作成)の助手です。
+必ず日本語のみで、箇条書きを使って短く答えてください。
+
+【指示】
+1. 回答にPythonコードを書かないでください。
+2. 「『${blocks}』カテゴリの『△△』ブロック」を使って、作り方を教えてください。
+3. 専門用語（引数など）の意味を聞かれたら、中学生にも分かるように短く解説してください。
+4. 作り話をしないでください。不自然な言葉遣いも禁止です。
 
 現在のコード(Python):
 \`\`\`python
 ${code}
 \`\`\`
-基本的にユーザーがチャットした言葉で答えてください。`;
+ユーザーの言語で、ブロックでの作り方を教えてください。`;
 
             const loadingId = this.addMessageToUI('bot', '...', true);
             const messages = [
@@ -205,7 +201,7 @@ ${code}
                 { role: "user", content: text }
             ];
 
-            const chunks = await this.engine.chat.completions.create({ messages, temperature: 0.7, stream: true });
+            const chunks = await this.engine.chat.completions.create({ messages, temperature: 0.3, stream: true });
             let fullText = "";
             for await (const chunk of chunks) {
                 fullText += chunk.choices[0]?.delta?.content || "";
@@ -242,13 +238,11 @@ ${code}
         const chatBody = document.getElementById('aiChatBody');
         const msgDiv = document.createElement('div');
         msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'items-start'} gap-3`;
-        // ID を常にユニークにする（isLoading かどうかに関わらず Date.now() を使用）
         const id = 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5);
         msgDiv.id = id;
         const avatarHtml = role === 'bot' ? `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-5 h-5 text-white"></i></div>` : '';
         const contentClass = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700';
 
-        // Markdown 変換後の HTML を注入
         const htmlContent = this.parseMarkdown(text);
         msgDiv.innerHTML = `${avatarHtml}<div class="p-4 rounded-2xl ${contentClass} shadow-sm max-w-[85%]"><p class="text-sm">${htmlContent}</p></div>`;
         
@@ -262,21 +256,18 @@ ${code}
         const msgDiv = document.getElementById(id);
         if (msgDiv) {
             const p = msgDiv.querySelector('p');
-            if (p) {
-                // ストリーミング中も HTML 変換を適用
-                p.innerHTML = this.parseMarkdown(text);
-            }
+            if (p) p.innerHTML = this.parseMarkdown(text);
             const chatBody = document.getElementById('aiChatBody');
             chatBody.scrollTop = chatBody.scrollHeight;
         }
     }
 
     clearHistory() {
-        if (confirm("チャット履歴を消してもいい？")) { this.chatHistory = []; localStorage.removeItem(this.STORAGE_KEY); this.renderHistory(); }
+        if (confirm("チャット履歴を消してもいいですか？")) { this.chatHistory = []; localStorage.removeItem(this.STORAGE_KEY); this.renderHistory(); }
     }
 
     downloadHistory() {
-        if (this.chatHistory.length === 0) return alert("履歴がないよ！");
+        if (this.chatHistory.length === 0) return alert("履歴がありません！！");
         const content = this.chatHistory.map(m => `[${m.role === 'user' ? 'あなた' : 'AI'}]\n${m.content}\n`).join('\n---\n\n');
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
