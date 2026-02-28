@@ -139,19 +139,41 @@ class Plugin {
         input.value = '';
         this.addChatMessage('user', text);
 
-        if (!window.ai || !window.ai.languageModel) {
-            this.addChatMessage('bot', '申し訳ありません。お使いのブラウザで Gemini Nano (Built-in AI) が有効になっていないようです。Chrome の設定を確認してください。');
+        // APIの場所を特定
+        let aiApi = null;
+        let isNewApi = false;
+
+        if (window.ai && window.ai.languageModel) {
+            aiApi = window.ai.languageModel;
+        } else if (typeof LanguageModel !== 'undefined') {
+            aiApi = LanguageModel;
+            isNewApi = true;
+        }
+
+        if (!aiApi) {
+            this.addChatMessage('bot', '申し訳ありません。お使いのブラウザで Gemini Nano (Built-in AI) が有効になっていないようです。もしくは、最新の Chrome Flag 設定が必要です。');
             return;
         }
 
         try {
             if (!this.session) {
-                const capabilities = await window.ai.languageModel.capabilities();
-                if (capabilities.available === 'no') {
-                    this.addChatMessage('bot', 'Gemini Nano が利用できません。');
-                    return;
+                let available = 'no';
+                if (isNewApi) {
+                    // v145+ の新しい API 形式
+                    available = await aiApi.availability();
+                } else {
+                    // 標準的な API 形式
+                    const caps = await aiApi.capabilities();
+                    available = caps.available;
                 }
-                this.session = await window.ai.languageModel.create({
+
+                if (available === 'no' || available === 'unavailable') {
+                    this.addChatMessage('bot', '【警告】Gemini Nano の準備ができていません（ステータス: ' + available + '）。ディスク容量不足の可能性がありますが、作成を強行してみます。しばらくお待ちください...');
+                }
+                
+                this.session = await aiApi.create({
+                    expectedUsage: 'text-review',
+                    outputLanguage: 'ja',
                     systemPrompt: "あなたは EDBB (Easy Discord Bot Builder) の AI アシスタントです。ユーザーが作成した Blockly から生成された Python (discord.py) コードをレビューし、バグの報告や改善案を提示してください。回答は日本語で行ってください。EDBB に関係のない世間話や質問は『EDBB に関すること以外はお答えできません。』とだけ答えて無視してください。"
                 });
             }
