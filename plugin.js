@@ -242,7 +242,8 @@ ${code}
         const chatBody = document.getElementById('aiChatBody');
         const msgDiv = document.createElement('div');
         msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'items-start'} gap-3`;
-        const id = 'msg-' + (isLoading ? 'loading' : Date.now());
+        // ID を常にユニークにする（isLoading かどうかに関わらず Date.now() を使用）
+        const id = 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5);
         msgDiv.id = id;
         const avatarHtml = role === 'bot' ? `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-5 h-5 text-white"></i></div>` : '';
         const contentClass = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700';
