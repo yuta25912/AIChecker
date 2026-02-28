@@ -15,7 +15,7 @@ class Plugin {
         this.loadHistoryFromStorage();
         this.createAiButton();
         this.createAiModal();
-        console.log("AIChecker (Learning-Support dev10) loaded!");
+        console.log("AIChecker (Polished dev11) loaded!");
     }
 
     async onunload() {
@@ -28,7 +28,10 @@ class Plugin {
     loadHistoryFromStorage() {
         try {
             const saved = localStorage.getItem(this.STORAGE_KEY);
-            if (saved) this.chatHistory = JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) this.chatHistory = parsed;
+            }
         } catch (e) { console.error(e); }
     }
 
@@ -51,6 +54,24 @@ class Plugin {
         aiBtn.addEventListener('click', () => this.toggleAiModal(true));
     }
 
+    // 簡易的な Markdown 変換 (太字と改行)
+    parseMarkdown(text) {
+        if (!text) return "";
+        let html = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        
+        // 太字 **...** -> <strong>...</strong>
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // 太字 *...* -> <em>...</em> (一応)
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        // 改行 \n -> <br>
+        html = html.replace(/\n/g, '<br>');
+        
+        return html;
+    }
+
     createAiModal() {
         const oldModal = document.getElementById('aiModal');
         if (oldModal) oldModal.remove();
@@ -63,7 +84,7 @@ class Plugin {
                             <div class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                             <div>
                                 <h2 class="text-lg font-bold text-slate-800 dark:text-white">AIChecker (Easy)</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 (Alibaba) | Learning Mode</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 | Learning Mode | dev11</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -79,10 +100,9 @@ class Plugin {
                     </div>
                     <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                         <div class="flex gap-2">
-                            <input id="aiChatInput" type="text" placeholder="「〜したい」や「この言葉の意味は？」など聞いてね" class="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                            <input id="aiChatInput" type="text" placeholder="質問を送ってね" class="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white">
                             <button id="aiSendBtn" class="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"><i data-lucide="send" class="w-5 h-5"></i></button>
                         </div>
-                        <p class="mt-2 text-[10px] text-center text-slate-400">EDBB / Discord / 設計 / 用語の質問に答えます。それ以外は答えられません。</p>
                     </div>
                 </div>
             </div>
@@ -106,7 +126,7 @@ class Plugin {
         const chatBody = document.getElementById('aiChatBody');
         chatBody.innerHTML = '';
         if (this.chatHistory.length === 0) {
-            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n\n**できること：**\n- ブロックの組み合わせ方の相談\n- コードのバグチェック\n- 「オブジェクト」や「引数」って何？といった用語の解説\n\n分からないことがあったら何でも聞いてね！どのカテゴリのどのブロックを使えばいいか、具体的に教えるよ！');
+            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n\n**できること：**\n- ブロックの組み合わせ方の相談\n- コードのバグチェック\n- 用語の解説（「オブジェクト」って何？など）\n\n分からないことがあったら何でも聞いてね！');
         } else {
             this.chatHistory.forEach(msg => this.addMessageToUI(msg.role, msg.content));
         }
@@ -126,7 +146,25 @@ class Plugin {
     }
 
     getAvailableBlocks() {
-        return "論理, ループ, 算術, テキスト, リスト, 変数, 関数, Discord関連(Bot, メッセージ, インタラクション等)";
+        return "論理, ループ, 算術, テキスト, リスト, 変数, 関数, Discord(Bot, Message, Interaction)";
+    }
+
+    // デバッグ用: 話題の推測ログ
+    logDetectedTopic(text) {
+        const topics = {
+            "バグ": ["動かない", "エラー", "バグ", "変", "おかしい", "ミス", "固まる"],
+            "Discord設定": ["メッセージ", "コマンド", "送信", "チャンネル", "名前", "メンション"],
+            "設計相談": ["どうすれば", "作り方", "方法", "構成", "設計"],
+            "用語解説": ["とは", "意味", "何", "教えて", "って", "について"],
+            "使い方": ["使い方", "どう使う", "やり方", "どうやって", "どうやってやる", "どうやったら"]
+        };
+        for (const [topic, keywords] of Object.entries(topics)) {
+            if (keywords.some(kw => text.includes(kw))) {
+                console.log(`[AIChecker Debug] Detected Topic: ${topic}`);
+                return;
+            }
+        }
+        console.log(`[AIChecker Debug] Topic: General Inquiry`);
     }
 
     async handleSendMessage() {
@@ -134,6 +172,8 @@ class Plugin {
         const text = input.value.trim();
         if (!text) return;
         input.value = '';
+
+        this.logDetectedTopic(text);
         this.addChatMessage('user', text);
 
         try {
@@ -147,21 +187,18 @@ class Plugin {
 
             const blocks = this.getAvailableBlocks();
             const systemPrompt = `あなたは EDBB の親切な AI アシスタントです。
-
-【回答方針】
-1. **ブロック名で教える**: 解決策を示すときは、「『${blocks}』カテゴリの中にある『△△』ブロックを使いましょう」のように具体的に案内してください。
-2. **用語の解説**: 「オブジェクト」「引数」「関数」などの専門用語を回答に含めても良いですが、ユーザーから「〜ってどういう意味？」と聞かれたら、中学生でも分かるように優しく解説してください。
-3. **EDBB専用**: Discord Botの作成、エディタの使い方、プログラムの設計に関すること「のみ」答えてください。それ以外は断ってください。
-4. **親しみやすさ**: 丁寧ですが堅苦しくない口調で。
+解決策を示すときは、「『${blocks}』カテゴリの中にある『△△』ブロックを使いましょう」のように具体的に案内してください。
+専門用語を回答に含めても良いですが、ユーザーから意味を聞かれたら中学生でも分かるように優しく解説してください。
+Discord Botの作成、エディタの使い方、プログラムの設計に関すること「のみ」答えてください。
+丁寧ですが堅苦しくない口調で回答してください。
 
 現在のコード(Python):
 \`\`\`python
 ${code}
 \`\`\`
+基本的にユーザーがチャットした言葉で答えてください。`;
 
-ユーザーの質問に日本語で答えてください。`;
-
-            const loadingId = this.addMessageToUI('bot', '考え中...', true);
+            const loadingId = this.addMessageToUI('bot', '...', true);
             const messages = [
                 { role: "system", content: systemPrompt },
                 ...this.chatHistory.slice(-5).map(m => ({ role: m.role === 'bot' ? 'assistant' : m.role, content: m.content })),
@@ -180,14 +217,13 @@ ${code}
 
     async initEngine() {
         const pContainer = document.getElementById('aiLoadProgress');
-        const pBar = document.getElementById('aiProgressBar');
         try {
             const webllm = await this.loadWebLLM();
             pContainer.style.display = 'block';
             this.engine = new webllm.MLCEngine();
             this.engine.setInitProgressCallback((report) => {
                 const progress = Math.round(report.progress * 100);
-                pBar.style.width = progress + '%';
+                document.getElementById('aiProgressBar').style.width = progress + '%';
                 document.getElementById('aiProgressPercent').innerText = progress + '%';
                 document.getElementById('aiProgressText').innerText = report.text;
             });
@@ -210,7 +246,11 @@ ${code}
         msgDiv.id = id;
         const avatarHtml = role === 'bot' ? `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-5 h-5 text-white"></i></div>` : '';
         const contentClass = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700';
-        msgDiv.innerHTML = `${avatarHtml}<div class="p-4 rounded-2xl ${contentClass} shadow-sm max-w-[85%]"><p class="text-sm whitespace-pre-wrap">${text}</p></div>`;
+
+        // Markdown 変換後の HTML を注入
+        const htmlContent = this.parseMarkdown(text);
+        msgDiv.innerHTML = `${avatarHtml}<div class="p-4 rounded-2xl ${contentClass} shadow-sm max-w-[85%]"><p class="text-sm">${htmlContent}</p></div>`;
+        
         chatBody.appendChild(msgDiv);
         chatBody.scrollTop = chatBody.scrollHeight;
         if (window.lucide && role === 'bot') window.lucide.createIcons({ attrs: { class: 'lucide' }, nameAttr: 'data-lucide', root: msgDiv });
@@ -221,7 +261,10 @@ ${code}
         const msgDiv = document.getElementById(id);
         if (msgDiv) {
             const p = msgDiv.querySelector('p');
-            if (p) p.innerText = text;
+            if (p) {
+                // ストリーミング中も HTML 変換を適用
+                p.innerHTML = this.parseMarkdown(text);
+            }
             const chatBody = document.getElementById('aiChatBody');
             chatBody.scrollTop = chatBody.scrollHeight;
         }

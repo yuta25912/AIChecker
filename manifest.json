@@ -1,7 +1,7 @@
 {
     "id": "ai-checker",
     "name": "AIChecker",
-    "version": "1.0.0-dev11",
+    "version": "1.0.0-dev13",
     "author": "yuta25912",
     "description": "Gemini Nanoを使用してコードのレビューやバグの報告を行うAIアシスタントです。",
     "affectsStyle": true,
