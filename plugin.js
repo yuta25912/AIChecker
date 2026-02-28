@@ -5,7 +5,8 @@ class Plugin {
         this.aiModal = null;
         this.engine = null;
         this.webllm = null;
-        this.selectedModel = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+        // 0.5Bは知能不足で嘘を吐くため、1.5Bにアップグレード
+        this.selectedModel = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
         this.isLoaded = false;
         this.chatHistory = [];
         this.STORAGE_KEY = 'edbb_ai_checker_history';
@@ -15,7 +16,7 @@ class Plugin {
         this.loadHistoryFromStorage();
         this.createAiButton();
         this.createAiModal();
-        console.log("AIChecker (Stable dev15) loaded!");
+        console.log("AIChecker (Smart 1.5B dev16) loaded!");
     }
 
     async onunload() {
@@ -78,7 +79,7 @@ class Plugin {
                             <div class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                             <div>
                                 <h2 class="text-lg font-bold text-slate-800 dark:text-white">AIChecker</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 | Stability Mode | dev15</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Qwen2.5 1.5B (High Quality) | dev16</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -120,7 +121,7 @@ class Plugin {
         const chatBody = document.getElementById('aiChatBody');
         chatBody.innerHTML = '';
         if (this.chatHistory.length === 0) {
-            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n\n分からないことがあったら何でも聞いてね！');
+            this.addMessageToUI('bot', 'こんにちは！EDBB専用の AI アシスタントです！😊\n少し賢いモデル(1.5B)にアップグレードしました！ブロックの作り方など、何でも聞いてね！');
         } else {
             this.chatHistory.forEach(msg => this.addMessageToUI(msg.role, msg.content));
         }
@@ -179,20 +180,20 @@ class Plugin {
             }
 
             const blocks = this.getAvailableBlocks();
-            const systemPrompt = `あなたはEDBB(Discord Bot作成)の助手です。
-必ず日本語のみで、箇条書きを使って短く答えてください。
+            const systemPrompt = `あなたはEDBB(Discord Bot作成ツール)の先生です。
+必ず日本語のみで、自然な言葉遣いで答えてください。作り話やパニックによる変な用語の使用は厳禁です。
 
-【指示】
-1. 回答にPythonコードを書かないでください。
-2. 「『${blocks}』カテゴリの『△△』ブロック」を使って、作り方を教えてください。
-3. 専門用語（引数など）の意味を聞かれたら、中学生にも分かるように短く解説してください。
-4. 作り話をしないでください。不自然な言葉遣いも禁止です。
+【重要】
+1. 回答にPythonコードを直接書かないでください。ユーザーはブロックで作成しています。
+2. 指示は「『${blocks}』カテゴリの中にある『〇〇』というブロックを使い、そこに『△△』を繋げてください」のように、具体的なブロック名を挙げて説明してください。
+3. 専門用語（引数など）の意味を聞かれたら、初心者にも分かるように優しく解説してください。
+4. 常に「ブロックエディタでの操作」を前提とした回答を心がけてください。
 
 現在のコード(Python):
 \`\`\`python
 ${code}
 \`\`\`
-ユーザーの言語で、ブロックでの作り方を教えてください。`;
+ユーザーがチャットした意図を汲み取り、ブロックでの作り方を分かりやすく教えてください。`;
 
             const loadingId = this.addMessageToUI('bot', '...', true);
             const messages = [
@@ -201,7 +202,8 @@ ${code}
                 { role: "user", content: text }
             ];
 
-            const chunks = await this.engine.chat.completions.create({ messages, temperature: 0.3, stream: true });
+            // 1.5B なら temperature 0.4 程度で安定します
+            const chunks = await this.engine.chat.completions.create({ messages, temperature: 0.4, stream: true });
             let fullText = "";
             for await (const chunk of chunks) {
                 fullText += chunk.choices[0]?.delta?.content || "";
