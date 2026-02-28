@@ -46,13 +46,21 @@ class Plugin {
             });
         }
 
-        aiBtn.addEventListener('click', () => this.toggleAiModal(true));
+        aiBtn.addEventListener('click', () => {
+            console.log("AIレビューボタンがクリックされました");
+            this.toggleAiModal(true);
+        });
     }
 
     createAiModal() {
+        // 既存のモーダルがあれば削除して重複を防ぐ
+        const oldModal = document.getElementById('aiModal');
+        if (oldModal) oldModal.remove();
+
         const modalHtml = `
-            <div id="aiModal" class="modal-backdrop hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
-                <div class="flex flex-col w-full max-w-2xl h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-slate-900 modal-content border border-white/20 dark:border-slate-700/50 transform transition-all duration-300 scale-95 opacity-0">
+            <div id="aiModal" style="display: none; position: fixed; inset: 0; z-index: 999999 !important; align-items: center; justify-content: center; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+                <!-- クラス名を衝突回避のために ai-checker-modal-content に変更 -->
+                <div class="flex flex-col w-full max-w-2xl h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ai-checker-modal-content" style="opacity: 1 !important; transform: scale(1) !important;">
                     <!-- Header -->
                     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
                         <div class="flex items-center gap-3">
@@ -82,7 +90,7 @@ class Plugin {
                     </div>
 
                     <!-- Progress Bar (Hidden by default) -->
-                    <div id="aiLoadProgress" class="hidden px-6 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <div id="aiLoadProgress" style="display: none;" class="px-6 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
                         <div class="flex justify-between mb-1">
                             <span id="aiProgressText" class="text-[10px] text-slate-500 dark:text-slate-400">モデルをロード中...</span>
                             <span id="aiProgressPercent" class="text-[10px] font-bold text-indigo-500">0%</span>
@@ -111,7 +119,7 @@ class Plugin {
         document.body.appendChild(modalElement);
         this.aiModal = modalElement;
 
-        console.log("AI Modal created:", !!this.aiModal);
+        console.log("AI Modal Force Created and Appended to Body");
 
         if (window.lucide) {
             window.lucide.createIcons({
@@ -132,38 +140,18 @@ class Plugin {
     }
 
     toggleAiModal(show) {
-        if (!this.aiModal) {
-            this.aiModal = document.getElementById('aiModal');
+        if (!this.aiModal || !document.getElementById('aiModal')) {
+            console.log("AI Modal not found in DOM, re-creating...");
+            this.createAiModal();
         }
-        
-        if (!this.aiModal) {
-            console.error("AI Modal is not found in DOM!");
-            return;
-        }
-
-        const content = this.aiModal.querySelector('.modal-content');
 
         if (show) {
-            console.log("Opening AI Modal...");
-            this.aiModal.classList.remove('hidden');
-            // 一瞬待ってからアニメーション用クラスを適用
-            setTimeout(() => {
-                this.aiModal.style.opacity = "1";
-                if (content) {
-                    content.style.opacity = "1";
-                    content.style.transform = "scale(1)";
-                }
-            }, 10);
+            console.log("Opening AI Modal (Ver. dev7)...");
+            this.aiModal.style.setProperty('display', 'flex', 'important');
+            // サイト側の .modal-content の干渉を避けるため show-modal は使わず直接制御
         } else {
             console.log("Closing AI Modal...");
-            this.aiModal.style.opacity = "0";
-            if (content) {
-                content.style.opacity = "0";
-                content.style.transform = "scale(0.95)";
-            }
-            setTimeout(() => {
-                this.aiModal.classList.add('hidden');
-            }, 300);
+            this.aiModal.style.setProperty('display', 'none', 'important');
         }
     }
 
@@ -243,7 +231,7 @@ ${code}
             this.addChatMessage('bot', 'WebLLM ライブラリを読み込んでいます...');
             await this.loadWebLLM();
             
-            progressContainer.classList.remove('hidden');
+            progressContainer.style.display = 'block';
             this.engine = new webllm.MLCEngine();
             
             this.engine.setInitProgressCallback((report) => {
@@ -256,13 +244,13 @@ ${code}
 
             await this.engine.reload(this.selectedModel);
             this.isLoaded = true;
-            progressContainer.classList.add('hidden');
+            progressContainer.style.display = 'none';
             this.addChatMessage('bot', 'モデルの準備が完了しました！レビューを開始します。');
 
         } catch (e) {
             console.error("Init Error:", e);
             this.addChatMessage('bot', '初期化中にエラーが発生しました。WebGPU が無効か、メモリが不足している可能性があります。');
-            progressContainer.classList.add('hidden');
+            progressContainer.style.display = 'none';
         }
     }
 
@@ -309,7 +297,6 @@ ${code}
         if (msgDiv) {
             const p = msgDiv.querySelector('p');
             if (p) {
-                // Markdown 的な簡易表示（改行）
                 p.innerText = text;
             }
             const chatBody = document.getElementById('aiChatBody');

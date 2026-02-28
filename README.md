@@ -30,10 +30,6 @@ WebLLM を使用して、Google の **Gemma 2 2B** モデルをブラウザ内�
 - **GPU**: Apple M1/M2/M3 チップの Mac、または NVIDIA/AMD GPU 搭載の PC。
 - **メモリ**: 8GB 以上の RAM (推奨)。
 
-## 👨‍💻 開発者
-
-- **yuta25912**
-
 ## 📄 ライセンス
 
 MIT License
