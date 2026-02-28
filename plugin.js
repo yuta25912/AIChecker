@@ -51,8 +51,8 @@ class Plugin {
 
     createAiModal() {
         const modalHtml = `
-            <div id="aiModal" class="modal-backdrop hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                <div class="flex flex-col w-full max-w-2xl h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-slate-900 modal-content border border-white/20 dark:border-slate-700/50">
+            <div id="aiModal" class="modal-backdrop hidden fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+                <div class="flex flex-col w-full max-w-2xl h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-slate-900 modal-content border border-white/20 dark:border-slate-700/50 transform transition-all duration-300 scale-95 opacity-0">
                     <!-- Header -->
                     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
                         <div class="flex items-center gap-3">
@@ -106,14 +106,18 @@ class Plugin {
             </div>
         `;
         const div = document.createElement('div');
-        div.innerHTML = modalHtml;
-        document.body.appendChild(div.firstElementChild);
-        this.aiModal = document.getElementById('aiModal');
+        div.innerHTML = modalHtml.trim();
+        const modalElement = div.firstElementChild;
+        document.body.appendChild(modalElement);
+        this.aiModal = modalElement;
+
+        console.log("AI Modal created:", !!this.aiModal);
 
         if (window.lucide) {
             window.lucide.createIcons({
                 attrs: { class: 'lucide' },
-                nameAttr: 'data-lucide'
+                nameAttr: 'data-lucide',
+                root: this.aiModal
             });
         }
 
@@ -128,10 +132,34 @@ class Plugin {
     }
 
     toggleAiModal(show) {
+        if (!this.aiModal) {
+            console.error("AI Modal is not initialized!");
+            return;
+        }
+
+        const content = this.aiModal.querySelector('.modal-content');
+
         if (show) {
             this.aiModal.classList.remove('hidden');
+            // アニメーション用のクラス適用
+            setTimeout(() => {
+                this.aiModal.classList.add('opacity-100');
+                this.aiModal.classList.remove('opacity-0');
+                if (content) {
+                    content.classList.add('scale-100', 'opacity-100');
+                    content.classList.remove('scale-95', 'opacity-0');
+                }
+            }, 10);
         } else {
-            this.aiModal.classList.add('hidden');
+            this.aiModal.classList.remove('opacity-100');
+            this.aiModal.classList.add('opacity-0');
+            if (content) {
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(() => {
+                this.aiModal.classList.add('hidden');
+            }, 300);
         }
     }
 
