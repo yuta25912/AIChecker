@@ -4,6 +4,7 @@ class Plugin {
         this.aiBtn = null;
         this.aiModal = null;
         this.engine = null;
+        this.webllm = null;
         this.selectedModel = "gemma-2-2b-it-q4f16_1-MLC";
         this.isLoaded = false;
     }
@@ -11,7 +12,7 @@ class Plugin {
     async onload() {
         this.createAiButton();
         this.createAiModal();
-        console.log("AIChecker (WebLLM version) loaded!");
+        console.log("AIChecker (WebLLM dev8) loaded!");
     }
 
     async onunload() {
@@ -59,7 +60,6 @@ class Plugin {
 
         const modalHtml = `
             <div id="aiModal" style="display: none; position: fixed; inset: 0; z-index: 999999 !important; align-items: center; justify-content: center; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
-                <!-- クラス名を衝突回避のために ai-checker-modal-content に変更 -->
                 <div class="flex flex-col w-full max-w-2xl h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ai-checker-modal-content" style="opacity: 1 !important; transform: scale(1) !important;">
                     <!-- Header -->
                     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
@@ -119,8 +119,6 @@ class Plugin {
         document.body.appendChild(modalElement);
         this.aiModal = modalElement;
 
-        console.log("AI Modal Force Created and Appended to Body");
-
         if (window.lucide) {
             window.lucide.createIcons({
                 attrs: { class: 'lucide' },
@@ -141,16 +139,15 @@ class Plugin {
 
     toggleAiModal(show) {
         if (!this.aiModal || !document.getElementById('aiModal')) {
-            console.log("AI Modal not found in DOM, re-creating...");
             this.createAiModal();
         }
 
+        const v = "dev8";
         if (show) {
-            console.log("Opening AI Modal (Ver. dev7)...");
+            console.log(`Opening AI Modal (Ver. ${v})...`);
             this.aiModal.style.setProperty('display', 'flex', 'important');
-            // サイト側の .modal-content の干渉を避けるため show-modal は使わず直接制御
         } else {
-            console.log("Closing AI Modal...");
+            console.log(`Closing AI Modal (Ver. ${v})...`);
             this.aiModal.style.setProperty('display', 'none', 'important');
         }
     }
@@ -158,14 +155,14 @@ class Plugin {
     async loadWebLLM() {
         if (this.webllm) return this.webllm;
         try {
-            console.log("Downloading WebLLM module...");
+            console.log("Downloading WebLLM ESM module...");
             // ESM 対応のため動的インポートを使用
             const module = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm");
             this.webllm = module;
             return module;
         } catch (e) {
-            console.error("Failed to load WebLLM:", e);
-            throw new Error("AIライブラリの読み込みに失敗しました。インターネット接続を確認してください。");
+            console.error("Failed to load WebLLM ESM:", e);
+            throw new Error("AIライブラリの読み込みに失敗しました。");
         }
     }
 
@@ -184,7 +181,6 @@ class Plugin {
 
             if (!this.isLoaded) return;
 
-            // 現在のコード取得
             let code = "コードがありません。";
             if (typeof Blockly !== 'undefined' && this.workspace) {
                 try {
@@ -194,14 +190,7 @@ class Plugin {
                 } catch(e) { console.error(e); }
             }
 
-            const prompt = `あなたは EDBB (Easy Discord Bot Builder) の AI アシスタントです。
-現在のコード:
-\`\`\`python
-${code}
-\`\`\`
-
-ユーザーの質問: ${text}
-回答は日本語で簡潔に行ってください。EDBB に関すること以外は「EDBB に関すること以外はお答えできません。」とだけ答えてください。`;
+            const prompt = `あなたは EDBB の AI アシスタントです。\n現在のコード:\n\`\`\`python\n${code}\n\`\`\`\n\n質問: ${text}\n回答は日本語で簡潔に。`;
 
             const loadingId = this.addChatMessage('bot', 'AI 実行中...', true);
             
@@ -231,7 +220,7 @@ ${code}
         const progressText = document.getElementById('aiProgressText');
 
         try {
-            this.addChatMessage('bot', 'WebLLM ライブラリを読み込んでいます...');
+            this.addChatMessage('bot', 'AIエンジンを初期化しています...');
             const webllm = await this.loadWebLLM();
             
             progressContainer.style.display = 'block';
@@ -248,11 +237,11 @@ ${code}
             await this.engine.reload(this.selectedModel);
             this.isLoaded = true;
             progressContainer.style.display = 'none';
-            this.addChatMessage('bot', 'モデルの準備が完了しました！レビューを開始します。');
+            this.addChatMessage('bot', '準備完了！質問をどうぞ。');
 
         } catch (e) {
             console.error("Init Error:", e);
-            this.addChatMessage('bot', '初期化中にエラーが発生しました。WebGPU が無効か、メモリが不足している可能性があります。');
+            this.addChatMessage('bot', '初期化エラー: ' + e.message);
             progressContainer.style.display = 'none';
         }
     }
@@ -261,37 +250,23 @@ ${code}
         const chatBody = document.getElementById('aiChatBody');
         const msgDiv = document.createElement('div');
         msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'items-start'} gap-3`;
-        
         const id = 'msg-' + Date.now();
         msgDiv.id = id;
 
         const avatarHtml = role === 'bot' ? 
-            `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
-                <i data-lucide="bot" class="w-5 h-5 text-white"></i>
-            </div>` : '';
+            `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0"><i data-lucide="bot" class="w-5 h-5 text-white"></i></div>` : '';
 
         const contentClass = role === 'user' ? 
             'bg-indigo-600 text-white rounded-br-none' : 
             'bg-white dark:bg-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700';
 
-        msgDiv.innerHTML = `
-            ${avatarHtml}
-            <div class="p-4 rounded-2xl ${contentClass} shadow-sm max-w-[85%]">
-                <p class="text-sm border-none bg-transparent outline-none w-full">${text}</p>
-            </div>
-        `;
-
+        msgDiv.innerHTML = `${avatarHtml}<div class="p-4 rounded-2xl ${contentClass} shadow-sm max-w-[85%]"><p class="text-sm">${text}</p></div>`;
         chatBody.appendChild(msgDiv);
         chatBody.scrollTop = chatBody.scrollHeight;
 
         if (window.lucide && role === 'bot') {
-            window.lucide.createIcons({
-                attrs: { class: 'lucide' },
-                nameAttr: 'data-lucide',
-                root: msgDiv
-            });
+            window.lucide.createIcons({ attrs: { class: 'lucide' }, nameAttr: 'data-lucide', root: msgDiv });
         }
-
         return id;
     }
 
@@ -299,9 +274,7 @@ ${code}
         const msgDiv = document.getElementById(id);
         if (msgDiv) {
             const p = msgDiv.querySelector('p');
-            if (p) {
-                p.innerText = text;
-            }
+            if (p) p.innerText = text;
             const chatBody = document.getElementById('aiChatBody');
             chatBody.scrollTop = chatBody.scrollHeight;
         }
