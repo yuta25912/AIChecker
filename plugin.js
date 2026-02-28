@@ -156,14 +156,17 @@ class Plugin {
     }
 
     async loadWebLLM() {
-        if (window.webllm) return;
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm";
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
+        if (this.webllm) return this.webllm;
+        try {
+            console.log("Downloading WebLLM module...");
+            // ESM 対応のため動的インポートを使用
+            const module = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm");
+            this.webllm = module;
+            return module;
+        } catch (e) {
+            console.error("Failed to load WebLLM:", e);
+            throw new Error("AIライブラリの読み込みに失敗しました。インターネット接続を確認してください。");
+        }
     }
 
     async handleSendMessage() {
@@ -229,7 +232,7 @@ ${code}
 
         try {
             this.addChatMessage('bot', 'WebLLM ライブラリを読み込んでいます...');
-            await this.loadWebLLM();
+            const webllm = await this.loadWebLLM();
             
             progressContainer.style.display = 'block';
             this.engine = new webllm.MLCEngine();
