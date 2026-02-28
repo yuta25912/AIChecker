@@ -133,29 +133,33 @@ class Plugin {
 
     toggleAiModal(show) {
         if (!this.aiModal) {
-            console.error("AI Modal is not initialized!");
+            this.aiModal = document.getElementById('aiModal');
+        }
+        
+        if (!this.aiModal) {
+            console.error("AI Modal is not found in DOM!");
             return;
         }
 
         const content = this.aiModal.querySelector('.modal-content');
 
         if (show) {
+            console.log("Opening AI Modal...");
             this.aiModal.classList.remove('hidden');
-            // アニメーション用のクラス適用
+            // 一瞬待ってからアニメーション用クラスを適用
             setTimeout(() => {
-                this.aiModal.classList.add('opacity-100');
-                this.aiModal.classList.remove('opacity-0');
+                this.aiModal.style.opacity = "1";
                 if (content) {
-                    content.classList.add('scale-100', 'opacity-100');
-                    content.classList.remove('scale-95', 'opacity-0');
+                    content.style.opacity = "1";
+                    content.style.transform = "scale(1)";
                 }
             }, 10);
         } else {
-            this.aiModal.classList.remove('opacity-100');
-            this.aiModal.classList.add('opacity-0');
+            console.log("Closing AI Modal...");
+            this.aiModal.style.opacity = "0";
             if (content) {
-                content.classList.remove('scale-100', 'opacity-100');
-                content.classList.add('scale-95', 'opacity-0');
+                content.style.opacity = "0";
+                content.style.transform = "scale(0.95)";
             }
             setTimeout(() => {
                 this.aiModal.classList.add('hidden');
